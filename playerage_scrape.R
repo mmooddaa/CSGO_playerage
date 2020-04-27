@@ -3,6 +3,11 @@
 
 library(xml2)
 library(lubridate)
+library(data.table)
+
+
+# Scrape Player Sample ----------------------------------------------------
+# Rule: All players with at least 1 map in a Major
 
 scrapeData <- read_html("https://www.hltv.org/stats/players?matchType=Majors&minMapCount=1")
 
@@ -82,6 +87,51 @@ for (i in 189) {
   print(paste("Completed", i, "of", nrow(playerIndex)))
 }
 rm(i, name, url, scrapeData)
+
+write.csv(playerIndex, "playerIndex.csv")
+
+(as_date("2006-06-15") - playerIndex$bday[1]) / 365.25
+
+# Scrape Player Pages -----------------------------------------------------
+
+baseURL <- "https://www.hltv.org/stats/players/matches"
+
+for (p in 1:nrow(playerIndex)) {
+  url <- paste0(baseURL, playerIndex$url[1])
+  
+  scrapeData <- read_html("https://www.hltv.org/stats/players/matches/11893/ZywOo")
+  
+  # Date of match
+  xml_text(xml_find_all(scrapeData, '//div[@class="time"]'))
+  
+  # Teams
+  xml_text(xml_parent(xml_find_all(scrapeData, '//img[@class="flag"]')[1]))
+  
+  teams <- xml_text(xml_find_all(scrapeData, '//div[@class="gtSmartphone-only"]'), trim = T)
+  teams <- teams[2:length(teams)]
+  
+  playerTeam <- teams[seq(1, length(teams), 2)]
+  opponentTeam <- teams[seq(2, length(teams), 2)]
+  
+  cbind(playerTeam, opponentTeam)
+  
+  # Map played
+  xml_text(xml_find_all(scrapeData, '//td[@class="statsMapPlayed"]'))
+  
+  # K - D
+  xml_text(xml_find_all(scrapeData, '//td[@class="statsCenterText"]'))
+  
+  # Rating
+  sapply(xml_find_all(scrapeData, '//td[@class="statsCenterText"]'), 
+         function (x) xml_text(xml_siblings(x)[6]))
+}
+
+
+
+
+
+
+
 
 
 
