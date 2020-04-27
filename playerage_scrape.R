@@ -2,6 +2,7 @@
 # PLayer name and URL for stats page
 
 library(xml2)
+library(lubridate)
 
 scrapeData <- read_html("https://www.hltv.org/stats/players?matchType=Majors&minMapCount=1")
 
@@ -24,3 +25,63 @@ playerIndex$url <- sapply(playerIndex$url,
                           function (x) strsplit(x, "?", fixed = TRUE)[[1]][1])
 
 write.csv(playerIndex, "playerIndex.csv")
+
+
+# Grab Liquipedia Birthdays -----------------------------------------------
+
+playerIndex <- read.csv("playerIndex.csv", 
+                        row.names = "X", 
+                        stringsAsFactors = FALSE)
+
+playerIndex$bday <- as_date(NA)
+playerIndex$statusLiquipedia <- as.character(NA)
+
+for (i in 189) {
+  name <- playerIndex$playerName[i]
+  name <- gsub(" ", "_", name) # gob b and disco doplan
+  
+  playerIndex$url[159]
+  
+  if (name == "AdreN") {
+    name <- "AdreN_(Kazakh_player)"
+  } else if (name == "adreN") {
+    name <- "AdreN_(American_player)"
+  } else if (name == "Hyper") {
+    name <- "Hyper_(Polish_player)"
+  } else if (name == "fox") {
+    name <- "Fox_(Portuguese_player)"
+  } else if (name == "Lucky") {
+    name <- "Lucky_(French_player)"
+  } else if (name == "draken") {
+    name <- "Draken_(William_Sundin)"
+  } else if (name == "Zeus") {
+    name <- "Zeus_(Ukrainian_player)"
+  } else if (name == "ScreaM") {
+    name <- "ScreaM_(Belgian_player)"
+  } else if (name == "ALEX") {
+    name <- "ALEX_(British_player)"
+  } else if (name == "TENZKI") {
+    name <- "Tenzki"
+  } else if (name == "zqkS") {
+    name <- "Zqk"
+  } else if (name == "mouz") {
+    name <- "Mouz_(player)"
+  } else if (name == "Skurk") {
+    name <- "Skurk_(Norwegian_player)"
+  } else if (strsplit(playerIndex$url[i], "/")[[1]][2] == "7382") {
+    name <- "Steel_(Lucas_Lopes)"
+  } else if (strsplit(playerIndex$url[i], "/")[[1]][2] == "7253") {
+    name <- "Steel_(Joshua_Nissan)"
+  }
+  
+  url <- paste0("https://liquipedia.net/counterstrike/", name)
+  scrapeData <- read_html(url)
+  
+  playerIndex$bday[i] <- xml_text(xml_find_all(scrapeData, '//span[@class="bday"]'))
+  
+  print(paste("Completed", i, "of", nrow(playerIndex)))
+}
+rm(i, name, url, scrapeData)
+
+
+
