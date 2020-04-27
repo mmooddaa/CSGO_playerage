@@ -93,45 +93,50 @@ write.csv(playerIndex, "playerIndex.csv")
 (as_date("2006-06-15") - playerIndex$bday[1]) / 365.25
 
 # Scrape Player Pages -----------------------------------------------------
+# TO DO:
+# Add matchURL and matchID (can sort within player on match id, greater # later)
+# Make note of * meaning HLTV Rating 1.0
+#   Possible solution: Use KPR? KPR highly correlated with HLTV Rating 2.0 (at least with Zywoo)
 
 baseURL <- "https://www.hltv.org/stats/players/matches"
 
 for (p in 1:nrow(playerIndex)) {
-  url <- paste0(baseURL, playerIndex$url[1])
+  url <- paste0(baseURL, playerIndex$url)
   
   scrapeData <- read_html("https://www.hltv.org/stats/players/matches/11893/ZywOo")
   
-  # Date of match
-  xml_text(xml_find_all(scrapeData, '//div[@class="time"]'))
+  # Prep Teams and KD
+  KD <- xml_text(xml_find_all(scrapeData, '//td[@class="statsCenterText"]'))
+  KD <- transpose(setDT(strsplit(KD, " - ")))
+  setnames(KD, c('kills', 'deaths'))
+  
+  KD <- KD[ , lapply(KD, as.integer)]
   
   # Teams
-  xml_text(xml_parent(xml_find_all(scrapeData, '//img[@class="flag"]')[1]))
-  
   teams <- xml_text(xml_find_all(scrapeData, '//div[@class="gtSmartphone-only"]'), trim = T)
   teams <- teams[2:length(teams)]
+  # Score
+  teams <- strsplit(teams, " (", fixed = TRUE)
+  teamScore <- sapply(teams, "[[", 2)
+  teamScore <- as.integer(unlist(strsplit(teamScore, ")")))
   
-  playerTeam <- teams[seq(1, length(teams), 2)]
-  opponentTeam <- teams[seq(2, length(teams), 2)]
+  teams <- sapply(teams, "[[", 1)
   
-  cbind(playerTeam, opponentTeam)
+  teams <- data.table(playerTeam = teams[seq(1, length(teams), 2)], 
+                      playerTeam_score = teamScore[seq(1, length(teamScore), 2)],
+                      oppoTeam = teams[seq(2, length(teams), 2)],
+                      oppoTeam_score = teamScore[seq(2, length(teamScore), 2)])
   
-  # Map played
-  xml_text(xml_find_all(scrapeData, '//td[@class="statsMapPlayed"]'))
+  # Create player data.table
+  tempHolder <- data.table(playerName = rep(playerIndex$playerName[p], nrow(KD)), 
+                           date = xml_text(xml_find_all(scrapeData, '//div[@class="time"]')),
+                           KD,
+                           HLTVrating = sapply(xml_find_all(scrapeData, 
+                                                            '//td[@class="statsCenterText"]'), 
+                                               function (x) xml_text(xml_siblings(x)[6])),
+                           teams,
+                           map = xml_text(xml_find_all(scrapeData, '//td[@class="statsMapPlayed"]')))
+  tempHolder$HLTVrating <- as.numeric(tempHolder$HLTVrating)
   
-  # K - D
-  xml_text(xml_find_all(scrapeData, '//td[@class="statsCenterText"]'))
-  
-  # Rating
-  sapply(xml_find_all(scrapeData, '//td[@class="statsCenterText"]'), 
-         function (x) xml_text(xml_siblings(x)[6]))
 }
-
-
-
-
-
-
-
-
-
-
+rm(baseURL, url p, KD, teams)
