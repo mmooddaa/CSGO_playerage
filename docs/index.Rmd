@@ -1,0 +1,74 @@
+---
+title: "Analysis of Player Performance and Age in CS: GO"
+author: "Michael Allen"
+date: "4/27/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(data.table)
+library(ggplot2)
+library(gridExtra)
+library(xtable)
+library(knitr)
+
+opts_chunk$set(echo = TRUE)
+playerData <- fread("../playerData_markdown.csv")
+
+theme_set(theme_bw())
+```
+
+## Introcution
+
+It is not uncommon to hear talk of a recently. Ample research has identified age effects in traditional sports. Even without more physically demands sports, however, there is extensive hetergeneity in the longevity of atheletic peformace. But esports are subject to an altogether different set of physical constraints. 
+
+## Data
+
+Data for this analysis was collected from [HLTV.org](http:s//www.HLTV.org). Following in the footsteps of the now-defunct Gotfrag, HLTV has evolved into an invaluable resource for the CS: GO community. They collected match data. For good reason, the site is highly protective of this data. The data used in this analysis was collected for purley educational, non-commercial purposes.
+
+
+### Player Sample
+The players included in this analysis are limited to those who have played at least 1 map in a Major. This yields a sample of 295 CS: GO players. The sample is likely biased towards longevitiy as all of the best players to play the game have played in a Major, while many on the cusp of becoming professional. However, given the Major's partially open qualification system, there are many players in the sample who have not achieved such an elite status. While this strategy successfuly restricts the sample to full-time, professional CS: GO players, it nevertheless leaves out a signifant chunk of the "second-tier" population of CS: GO players that play the game full time but never qualified for a Major. A future analysis may sample on participation in what HLTV codes as "Big events." This would likely capture the second-tier as most of the players in the group will have played in a handful of such events. "LAN" and "Online" categories would likely cast too wide of a net, brining in many amatuer players whose "career" trajectories are likely to be systematically different from professional players'.
+
+### Measuring Performance
+I use kills per round as a simple measure of player performance. This gets at the "twitch" ability that is most likely to decline with age. I do not know what it means. No one outside of HLTV does, in fact. The formula is secret.
+
+Now players develop other skills as they play the game that are likely to offset any decline in fragging ability.
+
+#### Why Not Use HLTV's Rating?
+
+The HLTV Rating is a hugely popular metric of player per-map performace. It is frequently cited by analysts and is featured prom
+
+This is due in part to its apparent simplicty. A rating of 1.00 is what an "average" player would. Anything above 1.00 is above averange and anything below is below average. Simple. But what does it mean to be "average" in this case? No one outside of HLTV knows. The biggest problem with this rating is that HLTV refuses to reveal exactly how it is calculated. No one outside of HLTV therefore has much of an idea as to what exactly this rating measures and what how the "averages" that serve as the statistics anchor are calculated.
+
+In response to criticism that its Rating 1.0 was no more informative than "simpler" stats like kill-death ratio, [HLTV developed Rating 2.0](https://www.hltv.org/news/20695/introducing-rating-20). While the formula used to calculate the new Rating 2.0 is secret, an [analysis by Chris Sardegna found](https://chrissardegna.com/blog/problems-with-csgo-rating-systems/) that Rating 2.0 suffers from the same problem. For example, Rating 2.0 and kills per round have a correlation coefficient (a simple measure of how change in one varialbe is correlated with change in another variable) of ~0.93. The figures below illustrate this issue by plotting ZywOo's per map HLTV Rating 2.0 against his KPR and KD ratio:
+
+```{r graph, fig.align = "center", out.width="50%", echo=FALSE}
+plotKPR <- ggplot(playerData, aes(x = kpr, y = HLTVrating)) +
+  geom_point(alpha = 0.3, size = .3) +
+  ylab("HLTV Ration 2.0") +
+  xlab("Kills Per Round") +
+  geom_smooth(method = "loess")
+
+plotKD <- ggplot(playerData, aes(x = (kills / deaths), y = HLTVrating)) +
+  geom_point(alpha = 0.3, size = .3) +
+  ylab("HLTV Ration 2.0") +
+  xlab("Kill-Death Ratio") +
+  geom_smooth(method = "loess")
+
+grid.arrange(plotKPR, plotKD, ncol = 2)
+```
+
+Likely due to the down weighting of outliers, the correlation between KD and HLTV Rating 2.0 seems to breakdown for extremely high KD values. The following figure plots ZywOo's **actual** HLTV Rating against an **estimate** of his Rating based on a simple linear model regressing Rating 2.0 on nothing but kills per round and deaths per round. As seen below, this simple model is highly predictive of the HLTV Rating, with an adjusted R^2^ of 0.93.
+
+```{r linear model plot, fig.align = "center", out.width = "50%", echo = FALSE}
+model1 <- lm(HLTVrating ~ kpr + dpr, data = playerData)
+plotModel1 <- data.frame(observed = playerData$HLTVrating, 
+                         predicted = model1$fitted.values,
+                         stringsAsFactors = FALSE)
+ggplot(plotModel1, aes(x = predicted, y = observed)) +
+  geom_point() +
+  xlab("Estimated HLTV Rating 2.0") +
+  ylab("Observed HLTV Ration 2.0")
+```
+So, next time you hear someone cite a players HLTV Rating, all that person is telling you is that that player tends to have more kills per round and fewer deaths per round than the "average" player. Of course, HLTV does not reveal how its rating is calulated, so we have no idea what the "average" player. So Rating 2.0 essentially is a measure of kills per round without some introduced noise from unknown aspects of the forumla. It is therefore simpler to rely on a simple statistic with known properties that is known to be highly valued in CS players and is generally thought to decline with age.
