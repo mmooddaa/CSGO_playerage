@@ -1,7 +1,7 @@
 ---
-title: "Analysis of Player Performance and Age in CS: GO"
+title: "Analysis of Age and Player Performance in CS: GO"
 author: "Michael Allen"
-date: "4/27/2020"
+date: "4/28/2020"
 output: html_document
 ---
 
@@ -32,7 +32,7 @@ theme_set(theme_bw())
 
 ## Introduction
 
-It is not uncommon to hear talk of a recently. Ample research has identified age effects in traditional sports. Even without more physically demands sports, however, there is extensive hetergeneity in the longevity of atheletic peformace. But esports are subject to an altogether different set of physical constraints. 
+It is not uncommon to hear talk of a recently. Ample research has identified age effects in traditional sports. Even without more physically demands sports, however, there is extensive hetergeneity in the longevity of atheletic peformace. But esports are subject to an altogether different set of physical constraints.
 
 ## Data
 
