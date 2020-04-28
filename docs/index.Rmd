@@ -18,7 +18,7 @@ playerData <- fread("../playerData_markdown.csv")
 theme_set(theme_bw())
 ```
 
-## Introcution
+## Introduction
 
 It is not uncommon to hear talk of a recently. Ample research has identified age effects in traditional sports. Even without more physically demands sports, however, there is extensive hetergeneity in the longevity of atheletic peformace. But esports are subject to an altogether different set of physical constraints. 
 
