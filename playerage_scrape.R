@@ -98,12 +98,20 @@ write.csv(playerIndex, "playerIndex.csv")
 # Make note of * meaning HLTV Rating 1.0
 #   Possible solution: Use KPR? KPR highly correlated with HLTV Rating 2.0 (at least with Zywoo)
 
+playerIndex <- read.csv("playerIndex.csv", 
+                        row.names = "X", 
+                        stringsAsFactors = FALSE)
+
 baseURL <- "https://www.hltv.org/stats/players/matches"
 
-for (p in 1:nrow(playerIndex)) {
-  url <- paste0(baseURL, playerIndex$url)
+playerData <- data.table()
+
+# Completed 1:75
+
+for (p in 76:100) {
+  url <- paste0(baseURL, playerIndex$url[p])
   
-  scrapeData <- read_html("https://www.hltv.org/stats/players/matches/11893/ZywOo")
+  scrapeData <- read_html(url)
   
   # Prep Teams and KD
   KD <- xml_text(xml_find_all(scrapeData, '//td[@class="statsCenterText"]'))
@@ -129,14 +137,44 @@ for (p in 1:nrow(playerIndex)) {
   
   # Create player data.table
   tempHolder <- data.table(playerName = rep(playerIndex$playerName[p], nrow(KD)), 
+                           bday = playerIndex$bday[p],
                            date = xml_text(xml_find_all(scrapeData, '//div[@class="time"]')),
+                           matchID = as.integer(NA),
                            KD,
                            HLTVrating = sapply(xml_find_all(scrapeData, 
                                                             '//td[@class="statsCenterText"]'), 
                                                function (x) xml_text(xml_siblings(x)[6])),
+                           HLTVrating2 = as.logical(NA),
                            teams,
-                           map = xml_text(xml_find_all(scrapeData, '//td[@class="statsMapPlayed"]')))
-  tempHolder$HLTVrating <- as.numeric(tempHolder$HLTVrating)
+                           map = xml_text(xml_find_all(scrapeData, '//td[@class="statsMapPlayed"]')),
+                           matchURL = sapply(xml_find_all(scrapeData, '//div[@class="time"]'), 
+                                             function (x) xml_attr(xml_parent(x), "href")))
   
+  playerData <- rbind(playerData, tempHolder)
+  
+  print(paste("Completed", p, "of", nrow(playerIndex)))
 }
-rm(baseURL, url p, KD, teams)
+rm(baseURL, url, p, KD, teams, teamScore, tempHolder, scrapeData)
+
+playerData[, HLTVrating2 := !grepl(" *", HLTVrating, fixed = T)]
+playerData[, HLTVrating := as.numeric(gsub(" *", "", HLTVrating, fixed = T))]
+playerData[ , date := dmy(date)]
+playerData[ , bday := as_date(bday)]
+
+playerData[, matchID := sapply(strsplit(playerData$matchURL, "/"), "[[", 5)]
+playerData$matchID <- as.integer(playerData$matchID)
+
+# Create age column
+playerData[ , playerAge := (playerData$date - playerData$bday)]
+playerData$playerAge <- as.integer(playerData$playerAge)
+
+# Merge with current data
+playerData_full <- fread("playerData.csv")
+playerData_full$bday <- as_date(playerData_full$bday)
+playerData_full$date <- as_date(playerData_full$date)
+
+playerData_full <- rbind(playerData_full, playerData)
+
+fwrite(playerData_full, "playerData.csv")
+
+setorder(playerData, playerName, matchID)
