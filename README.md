@@ -1,2 +1,2 @@
 # CSGO_playerage
-Look at effect of age on player ability in CS: GO
+Analysis of age on player performance in CS: GO
