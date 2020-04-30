@@ -20,9 +20,11 @@ playerData <- fread("../playerData.csv")
 playerData[ , `:=` (kpr = kills / (playerTeam_score + oppoTeam_score),
                     dpr = deaths / (playerTeam_score + oppoTeam_score),
                     KD = kills / deaths,
-                    totalRounds = (playerTeam_score + oppoTeam_score))]
-playerData$date <- as_date(playerData$date)
+                    totalRounds = (playerTeam_score + oppoTeam_score),
+                    date = as_date(playerData$date))]
+
 playerData[ , careerLength := date - min(date), by = playerName]
+
 playerData$careerLength <- as.numeric(playerData$careerLength) / 365.25
 playerData$playerAge <- as.numeric(playerData$playerAge) / 365.25
 
@@ -39,12 +41,12 @@ theme_set(theme_bw())
 
 Is the new Dignitas roster too old to compete at the highest levels of professional Counter-Strike? Only one member of the team--Håkon "hallzerk" Fjærli (19 years old)--is under 28. For comparison, among the current top 20 teams, only nine players 28 years or older (9%).[^oldplayers] 
 
-The deleterious effects of age on performance in traditioanl sports are well-known. . Sprinters than long-distance runners.
+The deleterious effect of age on performance in traditioanl sports is well-known. There is significant hetergeneity in the longevity of atheletic and mental performace both within and between games. Chess grandmasters tend to peak in their late-20s/early-30s. Sprinters have shorter careers than than long-distance runners. The length of an average NFL running back's career is about two and half years versus nearly five years for kickers. CS:GO pros suffer from BLAHLAH... There may outside-the-game pressures pushing CS:GO pros out of competition that the best atheletes in traditional sports do not experience. CS:GO BLAHBLAH. The game has been played professionally for nearly 20 years. Most importantly, remuneration is more salary-dependent and therefore more stable than a game like Dota 2 which reportedly have lower salaries but significantly higher prize purses. The relative stability of CS:GO may help the game retain older players that can maintain their form.
 
-Even without more physically demands sports, however, there is extensive hetergeneity in the longevity of atheletic peformace. But esports are subject to an altogether different set of physical constraints. blahblah. (How to include citations in this?)
+While it is commonly assumed that age is highly relevant to player ability in CS:GO (as evidenced by the reaction to the ), there has been little work done to try to quantify age effects on performance in high-level CS:GO play. Certain aspects of aging are almost certainly affect performace, declining mental acuity, lower reaction time, etc. But due to the low physical demands required, what players may lose as they age they may make up with experience. Second, we may think. But outside pressures might be driving this. While Counter Strike is one of (if not the) the most successful and longest-running esports, outside game pressures mount as players age. Tournament travel schedules are grueling; salaries have been low; and prize winnings unpredictable. As older players experience these external pressures more acutely, their motivation may fall and may be driven into retirement. The perception of age effects in CS:GO may therefore instead be a function of outside- rather than inside-the-game factors. As the Dignitas experiment shows, the competitive context around CS:GO has changed radically over the last few years. Perhaps most importantly, salaries have risen considerably. The consolidation of the professional-level competitive scene into 2-3 leagues may reduce international travel. These changes will help us examine whether CS:GO's professional circuit has been exacerbating the age effect. The goal of this analysis is to see if we might derive some insight into age effects an competitive play in CS:GO. Do older players have trouble fragging? Are older players more likely to retire? Has this changed over the last few years?
 
-While it is commonly assumed that age is highly relevant to player ability in CS:GO (as evidenced by the reaction to the ), there has been little work done to try to quantify age effects on performance in high-level CS:GO play. Certain aspects of aging are almost certainly affect performace, declining mental acuity, lower reaction time, etc. But due to the low physical demands required, what players may lose as they age they may make up with experience. Second, we may think. But outside pressures might be driving this. While Counter Strike is one of (if not the) the most successful and longest-running esports, outside game pressures mount as players age. Tournament travel schedules are grueling; salaries have been low; and prize winnings unpredictable. As older players experience these external pressures more acutely, their motivation may fall and may be driven into retirement. The perception of age effects in CS:GO may therefore instead be a function of outside- rather than inside-the-game factors. As the Dignitas experiment shows, the competitive context around CS:GO has changed radically over the last few years. Perhaps most importantly, salaries have risen considerably. The consolidation of the professional-level competitive scene into 2-3 leagues may reduce international travel. The goal of this analysis is to see if we might derive some insight into age effects an competitive play in CS:GO. Do older players have trouble fragging? Are older players more likely to retire? Has this changed over the last few years?
 
+[Earlier attempts](https://medium.com/@analyticalgaming/isageoverrated-fc2b58059a17) to analyze age effects in CS:GO have examined bivariate correlations between a player's age and their overall HLTV Rating 2.0. I have c. This way we can examine the *trajectory* of players over time as well as evaluate the potential for age effects to differ over time (due to, for example, changes in the ). 
 
 [^oldplayers]: This is based on the April 27, 2020 ranking. The players are: Finn "karrigen" Andersen (30), Chris "ChrisJ" de Jong (29), Olof "olofmeister" Kajbjer (29), Cédric "RpK" Guipouy (30), Gabriel "Fallen" Toledo (28), Fernando "fer" Alvarenga (28), Mikail "Maikelele" Bill (28), Jesse "zehN" Linjala (28), Dauren "adreN" Kystaubayev (30).
 
@@ -158,10 +160,10 @@ sumStats <- as.data.frame(
           playerData[ , lapply(.SD, sd, na.rm = T), .SDcols = sumStats$variable],
           playerData[ , lapply(.SD, quantile, na.rm = T), .SDcols = sumStats$variable])))
 colnames(sumStats) <- c("N", "Mean", "Std. Dev.", "0%", "25%", "50%", "75%", "100%")
-sumStats[1:2, 4:8] <- round(sumStats[1:2, 4:8], 0)
+
 rownames(sumStats) <- c("Player Age (days / 365.25)", "Career Length (days  / 365.25)", 
                         "HLTV Rating (pooled)", "HLTV Rating 2.0", 
                         "HLTV Rating 1.0", "Kills per round")
-kable_styling(kable(sumStats, digits = 2, caption = 'Summary Statistics'), 
+kable_styling(kable(sumStats, digits = 2), 
               bootstrap_options = c("striped", "hover", "condensed"))
 ```
