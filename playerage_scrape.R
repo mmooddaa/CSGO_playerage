@@ -106,9 +106,9 @@ baseURL <- "https://www.hltv.org/stats/players/matches"
 
 playerData <- data.table()
 
-# Completed 1:75
+# Completed 1:225
 
-for (p in 76:100) {
+for (p in 201:225) {
   url <- paste0(baseURL, playerIndex$url[p])
   
   scrapeData <- read_html(url)
@@ -156,6 +156,9 @@ for (p in 76:100) {
 }
 rm(baseURL, url, p, KD, teams, teamScore, tempHolder, scrapeData)
 
+playerIndex$playerName[200:225]
+unique(playerData$playerName)
+
 playerData[, HLTVrating2 := !grepl(" *", HLTVrating, fixed = T)]
 playerData[, HLTVrating := as.numeric(gsub(" *", "", HLTVrating, fixed = T))]
 playerData[ , date := dmy(date)]
@@ -174,6 +177,8 @@ playerData_full$bday <- as_date(playerData_full$bday)
 playerData_full$date <- as_date(playerData_full$date)
 
 playerData_full <- rbind(playerData_full, playerData)
+
+unique(playerData_full$playerName)
 
 fwrite(playerData_full, "playerData.csv")
 
