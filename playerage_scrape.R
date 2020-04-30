@@ -1,5 +1,4 @@
 # Scrape data from HLTV.org for analysis
-# PLayer name and URL for stats page
 
 library(xml2)
 library(lubridate)
@@ -33,6 +32,9 @@ write.csv(playerIndex, "playerIndex.csv")
 
 
 # Grab Liquipedia Birthdays -----------------------------------------------
+# I later discovered that Liquipedia has all birthdays on a single page.
+# It would have been easier to simple scrape that page and match with playerIndex.
+# URL is: https://liquipedia.net/counterstrike/Birthday_list
 
 playerIndex <- read.csv("playerIndex.csv", 
                         row.names = "X", 
@@ -43,9 +45,9 @@ playerIndex$statusLiquipedia <- as.character(NA)
 
 for (i in 189) {
   name <- playerIndex$playerName[i]
-  name <- gsub(" ", "_", name) # gob b and disco doplan
+  name <- gsub(" ", "_", name) # for "gob b" and "disco doplan"
   
-  playerIndex$url[159]
+  # PLayer specific corrections
   
   if (name == "AdreN") {
     name <- "AdreN_(Kazakh_player)"
@@ -79,24 +81,21 @@ for (i in 189) {
     name <- "Steel_(Joshua_Nissan)"
   }
   
+  # Create URL
   url <- paste0("https://liquipedia.net/counterstrike/", name)
   scrapeData <- read_html(url)
   
+  # Grab birthdate data
   playerIndex$bday[i] <- xml_text(xml_find_all(scrapeData, '//span[@class="bday"]'))
   
+  # Display progress
   print(paste("Completed", i, "of", nrow(playerIndex)))
 }
 rm(i, name, url, scrapeData)
 
 write.csv(playerIndex, "playerIndex.csv")
 
-(as_date("2006-06-15") - playerIndex$bday[1]) / 365.25
-
 # Scrape Player Pages -----------------------------------------------------
-# TO DO:
-# Add matchURL and matchID (can sort within player on match id, greater # later)
-# Make note of * meaning HLTV Rating 1.0
-#   Possible solution: Use KPR? KPR highly correlated with HLTV Rating 2.0 (at least with Zywoo)
 
 playerIndex <- read.csv("playerIndex.csv", 
                         row.names = "X", 
@@ -106,9 +105,9 @@ baseURL <- "https://www.hltv.org/stats/players/matches"
 
 playerData <- data.table()
 
-# Completed 1:225
+# Completed all rows
 
-for (p in 201:225) {
+for (p in 1:nrow(playerIndex)) {
   url <- paste0(baseURL, playerIndex$url[p])
   
   scrapeData <- read_html(url)
@@ -156,7 +155,7 @@ for (p in 201:225) {
 }
 rm(baseURL, url, p, KD, teams, teamScore, tempHolder, scrapeData)
 
-playerIndex$playerName[200:225]
+playerIndex$playerName[261:295]
 unique(playerData$playerName)
 
 playerData[, HLTVrating2 := !grepl(" *", HLTVrating, fixed = T)]
@@ -171,6 +170,8 @@ playerData$matchID <- as.integer(playerData$matchID)
 playerData[ , playerAge := (playerData$date - playerData$bday)]
 playerData$playerAge <- as.integer(playerData$playerAge)
 
+playerData$playerName[playerData$playerName == "steel2"] <- "steel_nissan"
+
 # Merge with current data
 playerData_full <- fread("playerData.csv")
 playerData_full$bday <- as_date(playerData_full$bday)
@@ -179,7 +180,17 @@ playerData_full$date <- as_date(playerData_full$date)
 playerData_full <- rbind(playerData_full, playerData)
 
 unique(playerData_full$playerName)
+playerIndex$playerName
+
+# MISSING ONE
 
 fwrite(playerData_full, "playerData.csv")
+
+
+# WHo is missing? Steel. Because he has same name as other steel. Need to fix.
+index <- playerIndex$playerName
+data <- unique(playerData_full$playerName)
+
+duplicated(data, index)
 
 setorder(playerData, playerName, matchID)
