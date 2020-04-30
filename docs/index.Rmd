@@ -46,7 +46,7 @@ The deleterious effect of age on performance in traditioanl sports is well-known
 While it is commonly assumed that age is highly relevant to player ability in CS:GO (as evidenced by the reaction to the ), there has been little work done to try to quantify age effects on performance in high-level CS:GO play. Certain aspects of aging are almost certainly affect performace, declining mental acuity, lower reaction time, etc. But due to the low physical demands required, what players may lose as they age they may make up with experience. Second, we may think. But outside pressures might be driving this. While Counter Strike is one of (if not the) the most successful and longest-running esports, outside game pressures mount as players age. Tournament travel schedules are grueling; salaries have been low; and prize winnings unpredictable. As older players experience these external pressures more acutely, their motivation may fall and may be driven into retirement. The perception of age effects in CS:GO may therefore instead be a function of outside- rather than inside-the-game factors. As the Dignitas experiment shows, the competitive context around CS:GO has changed radically over the last few years. Perhaps most importantly, salaries have risen considerably. The consolidation of the professional-level competitive scene into 2-3 leagues may reduce international travel. These changes will help us examine whether CS:GO's professional circuit has been exacerbating the age effect. The goal of this analysis is to see if we might derive some insight into age effects an competitive play in CS:GO. Do older players have trouble fragging? Are older players more likely to retire? Has this changed over the last few years?
 
 
-[Earlier attempts](https://medium.com/@analyticalgaming/isageoverrated-fc2b58059a17) to analyze age effects in CS:GO have examined bivariate correlations between a player's age and their overall HLTV Rating 2.0. I have c. This way we can examine the *trajectory* of players over time as well as evaluate the potential for age effects to differ over time (due to, for example, changes in the ). 
+[Earlier investigations](https://medium.com/@analyticalgaming/isageoverrated-fc2b58059a17) into age effects in CS:GO have examined only a single slice of time. Below I instead approach the question using individual map performance data covering `r prettyNum(length(unique(playerData$playerName)), big.mark = ",")` professional CS:GO players from `r prettyNum(length(unique(playerData$matchID)), big.mark = ",")` matches that occured between September 2012 and April 2020. This way we can examine the trajectory of players over time, rather than just a snapshot. 
 
 [^oldplayers]: This is based on the April 27, 2020 ranking. The players are: Finn "karrigen" Andersen (30), Chris "ChrisJ" de Jong (29), Olof "olofmeister" Kajbjer (29), Cédric "RpK" Guipouy (30), Gabriel "Fallen" Toledo (28), Fernando "fer" Alvarenga (28), Mikail "Maikelele" Bill (28), Jesse "zehN" Linjala (28), Dauren "adreN" Kystaubayev (30).
 
@@ -167,3 +167,20 @@ rownames(sumStats) <- c("Player Age (days / 365.25)", "Career Length (days  / 36
 kable_styling(kable(sumStats, digits = 2), 
               bootstrap_options = c("striped", "hover", "condensed"))
 ```
+
+Some text, here are some graphs. Steeper slope on KPR suggests older player may indeed be shifting to other activties measured by the HLTV Rating as their fragging-ability declines with age.
+
+```{r age plot, echo=F, out.width = "50%", fig.align='center'}
+age_hltv <- ggplot(playerData, aes(x = playerAge, y = HLTVrating)) +
+  geom_point(alpha = 0.3, size = .3) +
+  ylab("HLTV Rating 2.0") +
+  xlab("Age") +
+  geom_smooth(method = "lm")
+
+age_kpr <- ggplot(playerData, aes(x = playerAge, y = kpr)) +
+  geom_point(alpha = 0.3, size = .3) +
+  ylab("KPR") +
+  xlab("Age") +
+  geom_smooth(method = "lm")
+
+grid.arrange(age_hltv, age_kpr, ncol = 2, top = "Age and Performance, bivariate regression line")
