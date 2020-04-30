@@ -12,6 +12,7 @@ library(gridExtra)
 library(xtable)
 library(lubridate)
 library(knitr)
+library(kableExtra)
 
 opts_chunk$set(echo = TRUE)
 playerData <- fread("../playerData.csv")
@@ -22,21 +23,34 @@ playerData[ , `:=` (kpr = kills / (playerTeam_score + oppoTeam_score),
                     totalRounds = (playerTeam_score + oppoTeam_score))]
 playerData$date <- as_date(playerData$date)
 playerData[ , careerLength := date - min(date), by = playerName]
-playerData$careerLength <- as.integer(playerData$careerLength)
+playerData$careerLength <- as.numeric(playerData$careerLength) / 365.25
+playerData$playerAge <- as.numeric(playerData$playerAge) / 365.25
 
 playerData <- playerData[!is.infinite(KD), ]
 playerData <- playerData[!is.na(playerAge), ]
+
+playerData[HLTVrating2 == TRUE, HLTVrating_2 := HLTVrating]
+playerData[HLTVrating2 == FALSE, HLTVrating_1 := HLTVrating]
 
 theme_set(theme_bw())
 ```
 
 ## Introduction
 
-It is not uncommon to hear talk of a recently. Ample research has identified age effects in traditional sports. Even without more physically demands sports, however, there is extensive hetergeneity in the longevity of atheletic peformace. But esports are subject to an altogether different set of physical constraints.
+Is the new Dignitas roster too old to compete at the highest levels of professional Counter-Strike? Only one member of the team--Håkon "hallzerk" Fjærli (19 years old)--is under 28. For comparison, among the current top 20 teams, only nine players 28 years or older (9%).[^oldplayers] 
+
+The deleterious effects of age on performance in traditioanl sports are well-known. . Sprinters than long-distance runners.
+
+Even without more physically demands sports, however, there is extensive hetergeneity in the longevity of atheletic peformace. But esports are subject to an altogether different set of physical constraints. blahblah. (How to include citations in this?)
+
+While it is commonly assumed that age is highly relevant to player ability in CS:GO (as evidenced by the reaction to the ), there has been little work done to try to quantify age effects on performance in high-level CS:GO play. Certain aspects of aging are almost certainly affect performace, declining mental acuity, lower reaction time, etc. But due to the low physical demands required, what players may lose as they age they may make up with experience. Second, we may think. But outside pressures might be driving this. While Counter Strike is one of (if not the) the most successful and longest-running esports, outside game pressures mount as players age. Tournament travel schedules are grueling; salaries have been low; and prize winnings unpredictable. As older players experience these external pressures more acutely, their motivation may fall and may be driven into retirement. The perception of age effects in CS:GO may therefore instead be a function of outside- rather than inside-the-game factors. As the Dignitas experiment shows, the competitive context around CS:GO has changed radically over the last few years. Perhaps most importantly, salaries have risen considerably. The consolidation of the professional-level competitive scene into 2-3 leagues may reduce international travel. The goal of this analysis is to see if we might derive some insight into age effects an competitive play in CS:GO. Do older players have trouble fragging? Are older players more likely to retire? Has this changed over the last few years?
+
+
+[^oldplayers]: This is based on the April 27, 2020 ranking. The players are: Finn "karrigen" Andersen (30), Chris "ChrisJ" de Jong (29), Olof "olofmeister" Kajbjer (29), Cédric "RpK" Guipouy (30), Gabriel "Fallen" Toledo (28), Fernando "fer" Alvarenga (28), Mikail "Maikelele" Bill (28), Jesse "zehN" Linjala (28), Dauren "adreN" Kystaubayev (30).
 
 ## Data
 
-Data were collected from [HLTV.org](https://www.HLTV.org). Following in the footsteps of the defunct Gotfrag, HLTV has become an invaluable resource for the CS:GO community. They collect and share detailed information on sometimes hundreds of matches per day. For good reason, HLTV is highly protective of this data. The data used in this analysis were collected for purley educational, non-commercial purposes. While I will share HLTV's data, they are publically available on their website. A simple search will yield numerous packages dedicated to scraping HLTV data written for a variety of languages. For those interested in how I gathered the data for this specific project, the code (written in R) is available on [GitHub](https://github.com/mmooddaa/CSGO_playerage).
+Data were collected from [HLTV.org](https://www.HLTV.org) and [Liquipedia](https://liquipedia.net/counterstrike/). Following in the footsteps of the defunct Gotfrag, HLTV has become an invaluable resource for the CS:GO community. They collect and share detailed information on sometimes hundreds of matches per day. For good reason, HLTV is highly protective of this data. The data used in this analysis were collected for purley educational, non-commercial purposes. While I will share HLTV's data, they are publically available on their website. There are numerous packages dedicated to scraping HLTV data written for a variety of languages. For those interested in how I gathered the data for this specific project, the code (written in R) is available on [GitHub](https://github.com/mmooddaa/CSGO_playerage).
 
 ### Player Sample
 The players included in this analysis are limited to those who have played at least 1 map in a Major. This yields a sample of `r prettyNum(nrow(playerData), big.mark = ",")` observations (player-maps) across `r length(unique(playerData$playerName))` professional CS:GO players.[^1] The sample is likely biased towards longevitiy as all of the best players to play the game have played in a Major, while many on the cusp of becoming professional. However, given the Major's partially open qualification system, there are many players in the sample who have not achieved such an elite status. While this strategy successfuly restricts the sample to full-time, professional CS:GO players, it nevertheless leaves out a signifant chunk of the "second-tier" population of CS:GO players that play the game full time but never qualified for a Major. A future analysis may sample on participation in what HLTV codes as "Big events." This would likely capture the second-tier as most of the players in the group will have played in a handful of such events. "LAN" and "Online" categories would likely cast too wide of a net, bringing in many amatuer players whose "career" trajectories are likely to be systematically different from that of professional players'.
@@ -48,22 +62,44 @@ The players included in this analysis are limited to those who have played at le
 [^2]: They are ottoNd, EXR, FeTiSh, peet, centeks, RiTz, ultra, ioRek, astaRR, RiX, and MithilF.
 
 ### Measuring Performance
-I use kills per round as a simple measure of player performance. This gets at the "twitch" ability that is most likely to decline with age. I do not know what it means. No one outside of HLTV does, in fact. The formula is secret.
+I use two measures of performance: HLTV Rating as a broad, overall measure of player performance as well as kills per round (KPR). KPR is a simple measure of a players fragging ability. This is skill is tightly connected with a player's reaction time and cursor accuracy, both of which are expected to atrophy with age. KPR is thus an "easy" case for evaluating the effects of age on in-game performance.
+
+Knowledge of the map and the postional tendencies of one's opponents--these are likely to *increase* experience. So I will control for the length of career to account for the effects of experience on age. I discuss each below.
 
 Now players develop other skills as they play the game that are likely to offset any decline in fragging ability.
 
-#### Kills per round
-
 #### HLTV Rating
 
-The HLTV Rating is a hugely popular metric of player per-map performace. It is frequently cited by analysts and is featured prom
+The HLTV Rating is a hugely popular metric of overall player performace. It is frequently cited by analysts and is featured prom
 
 This is due in part to its apparent simplicty. A rating of 1.00 is what an "average" player would. Anything above 1.00 is above averange and anything below is below average. Simple. But what does it mean to be "average" in this case? No one outside of HLTV knows. The biggest problem with this rating is that HLTV refuses to reveal exactly how it is calculated. No one outside of HLTV therefore has much of an idea as to what exactly this rating measures and what how the "averages" that serve as the statistics anchor are calculated.
 
 ##### What does the HLTV Rating measure?
 
-In response to criticism that its Rating 1.0 was no more informative than simpler stats like kill-death ratio, [HLTV developed Rating 2.0](https://www.hltv.org/news/20695/introducing-rating-20). While the formula used to calculate the new Rating 2.0 is secret, an [analysis by Chris Sardegna found](https://chrissardegna.com/blog/problems-with-csgo-rating-systems/) that Rating 2.0 suffers from the same problem. While Sardegna focused on the correlation between KD ratio and HLTV Ratings 1.0 and 2.0, KPR is an even better predictor of HLTV's Rating. Rating 2.0 and kills per round have a correlation coefficient (a simple measure of how change in one varialbe is correlated with change in another variable) of `r round(cor(playerData$kpr[playerData$HLTVrating2 == T], playerData$HLTVrating[playerData$HLTVrating2 == T]), 2)`. The correlation coefficient betwen KPR and HLTV Rating 1.0 is 
-`r round(cor(playerData$kpr[playerData$HLTVrating2 == F], playerData$HLTVrating[playerData$HLTVrating2 == F]), 2)`. The figures below illustrate what might be driving the divergence between KPR and KD ration using the career statistics for the long-time Swedish player, Christopher "GeT_RiGhT" Alesund.
+In response to criticism that its Rating 1.0 was no more informative than simpler stats like kill-death ratio, [HLTV developed Rating 2.0](https://www.hltv.org/news/20695/introducing-rating-20). While the formula used to calculate the new Rating 2.0 is secret, an [analysis by Chris Sardegna found](https://chrissardegna.com/blog/problems-with-csgo-rating-systems/) that Rating 2.0 suffers from the same problem. While Sardegna focused on the correlation between KD ratio and HLTV Ratings 1.0 and 2.0, KPR is an even better predictor of HLTV's Rating. Rating 2.0 and kills per round have a Pearson correlation coefficient (a simple measure of how change in one varialbe is correlated with change in another variable) of `r round(cor(playerData$kpr[playerData$HLTVrating2 == T], playerData$HLTVrating[playerData$HLTVrating2 == T]), 2)`. The coefficient betwen KPR and HLTV Rating 1.0 is 
+`r round(cor(playerData$kpr[playerData$HLTVrating2 == F], playerData$HLTVrating[playerData$HLTVrating2 == F]), 2)`. 
+
+```{r corTable, fig.align='center', echo=F}
+corTable <- data.frame(KPR = c(cor(playerData$kpr, playerData$HLTVrating),
+                               cor(playerData$kpr, playerData$HLTVrating_2, 
+                                   use = "complete.obs"),
+                               cor(playerData$kpr, playerData$HLTVrating_1, 
+                                   use = "complete.obs")),
+                       KD = c(cor(playerData$KD, playerData$HLTVrating),
+                              cor(playerData$KD, playerData$HLTVrating_2, 
+                                  use = "complete.obs"),
+                              cor(playerData$KD, playerData$HLTVrating_1, 
+                                  use = "complete.obs")),
+                       row.names = c("HLTV Rating (pooled)",
+                                     "HLTV Rating 2.0",
+                                     "HLTV Rating 1.0"))
+
+kable_styling(kable(corTable, digits = 2), full_width = F,
+              bootstrap_options = c("striped", "hover", "condensed"))
+```
+
+
+The figures below illustrate what might be driving the divergence between KPR and KD using the career statistics for the long-time Swedish player, Christopher "GeT_RiGhT" Alesund.
 
 ```{r graph, fig.align = "center", out.width="50%", echo=FALSE, fig.cap="Note: Blue line plots a local polynomial regression with a bandwidth of 0.75. Shaded region is 95% confidence interval."}
 plotKPR <- ggplot(playerData[playerData$playerName == "GeT_RiGhT", ], 
@@ -103,6 +139,9 @@ ggplot(plotModel1, aes(x = predicted, y = observed)) +
 
 We do not know how HLTV calculates the "average" values used to anchor its Rating. Sardegna found that the averages used in Rating 1.0 were fixed at values meaningfully different from the true averages. How are different aspects of the statistic weighted? I assume that the Rating captures something outside of KPR. We should expect the Rating therefore to perhaps be more stable than KPR as a player ages given that the player may shift towards other in-game activities picked up by HLTV that go unmeasured by KPR. These include assists[^4] or what HLTV calls "impact rating," which is a composite of events like opening kills and 1vX "wins."[^5]
 
+#### Kills per round
+Given that the HLTV Rating is somewhat ambiguous as well as  in 2017. I also measure performance using kills per round
+
 [^4]: When a player contributes a certain amount of damage against an opponent, but another player is credited with the kill. It is unclear if HLTV includes flash assists.
 
 [^5]: HLTV only reports that they include "1vX wins." Obviously, 1vX *loses* are relevant to evaluating a player's cluch performance as well, but HLTV does not specify if loses are included in its "Impact Rating."
@@ -110,8 +149,6 @@ We do not know how HLTV calculates the "average" values used to anchor its Ratin
 ### Descriptives
 Some summary statistics:
 ```{r summary stats table, fig.align = "center", echo = FALSE}
-playerData[HLTVrating2 == TRUE, HLTVrating_2 := HLTVrating]
-playerData[HLTVrating2 == FALSE, HLTVrating_1 := HLTVrating]
 
 sumStats <- data.table(variable = c('playerAge', 'careerLength', 'HLTVrating', 'HLTVrating_2',
                                     'HLTVrating_1', 'kpr'))
@@ -122,8 +159,9 @@ sumStats <- as.data.frame(
           playerData[ , lapply(.SD, quantile, na.rm = T), .SDcols = sumStats$variable])))
 colnames(sumStats) <- c("N", "Mean", "Std. Dev.", "0%", "25%", "50%", "75%", "100%")
 sumStats[1:2, 4:8] <- round(sumStats[1:2, 4:8], 0)
-rownames(sumStats) <- c("Player Age (days)", "Career Length (days)", 
+rownames(sumStats) <- c("Player Age (days / 365.25)", "Career Length (days  / 365.25)", 
                         "HLTV Rating (pooled)", "HLTV Rating 2.0", 
                         "HLTV Rating 1.0", "Kills per round")
-kable(sumStats, digits = 2)
+kable_styling(kable(sumStats, digits = 2, caption = 'Summary Statistics'), 
+              bootstrap_options = c("striped", "hover", "condensed"))
 ```
