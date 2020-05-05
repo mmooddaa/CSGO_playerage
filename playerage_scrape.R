@@ -191,6 +191,55 @@ fwrite(playerData_full, "playerData.csv")
 index <- playerIndex$playerName
 data <- unique(playerData_full$playerName)
 
-duplicated(data, index)
 
-setorder(playerData, playerName, matchID)
+# Scrape Monthly HLTV Rankings ----------------------------------------------------
+# TO DO:
+# Create urls
+
+url <- "https://www.hltv.org/ranking/teams/2020/may/4"
+url <- "https://www.hltv.org/ranking/teams/2015/december/28"
+
+
+playerData <- data.table()
+rankData <- data.table()
+
+for (url in urls) {
+  
+  url <- 
+  scrapeData <- read_html(url)
+  
+  tempData <- data.table(rank = xml_text(xml_find_all(scrapeData, '//span[@class="position"]')),
+                         teamName = xml_text(xml_find_all(scrapeData, '//span[@class="name"]')),
+                         points = xml_text(xml_find_all(scrapeData, '//span[@class="points"]')),
+                         playerNames = xml_text(xml_find_all(scrapeData, '//table[@class="lineup"]'), 
+                                                trim = T))
+  
+  rankData <- rbind(rankData, tempData)
+  
+  ## SCRAPE PLAYERDATA 
+  # Grab player info 
+  tempData <- data.table(playerName = xml_text(xml_find_all(scrapeData, 
+                                                            '//td[@class="player-holder"]'), trim = T),
+                         fullName = xml_attr(xml_siblings(xml_find_all(scrapeData, 
+                                                                       '//div[@class="nick"]')), "title"),
+                         nationality = xml_attr(xml_children(xml_find_all(scrapeData, 
+                                                                          '//div[@class="nick"]')), "title"),
+                         url = xml_attr(xml_find_all(scrapeData, 
+                                                     '//a[@class="pointer"]'), "href"))
+  # Remove player info already in playerData
+  tempData <- tempData[!(tempData$url %chin% playerData$url)]
+  # Bind new player info into playerData
+  playerData <- rbind(playerData, tempData)
+}
+
+# Clean up
+# Rank
+rankData[ , rank := as.integer(lapply(strsplit(rank,"#"), '[[', 2))]
+
+# Player Names
+rankData[ , playerNames := gsub(" ", "", playerNames)]
+rankData[ , playerNames := gsub("\n\n", "+", playerNames)]
+
+# Points
+rankData[ , points := sapply(strsplit(points, " points", fixed = T), '[[', 1)]
+rankData[ , points := as.integer(lapply(strsplit(points, "(", fixed = T), '[[', 2))]
