@@ -3,6 +3,7 @@
 library(xml2)
 library(lubridate)
 library(data.table)
+library(stringr)
 
 
 # Scrape Player Sample ----------------------------------------------------
@@ -196,23 +197,43 @@ data <- unique(playerData_full$playerName)
 # TO DO:
 # Create urls
 
-url <- "https://www.hltv.org/ranking/teams/2020/may/4"
-url <- "https://www.hltv.org/ranking/teams/2015/december/28"
-
+baseURL <- "https://www.hltv.org"
+urlHolder <- data.table(url = "/ranking/teams/2015/october/1",
+                        complete = FALSE)
 
 playerData <- data.table()
 rankData <- data.table()
 
-for (url in urls) {
+i <- 1
+
+while (!all(urlHolder$complete)) {
   
-  url <- 
+  url <- paste0(baseURL, urlHolder$url[i])
+  
+  if (urlHolder$complete[i] == TRUE) {
+    print("Error. Already scraped this page.")
+    break
+  }
+  
   scrapeData <- read_html(url)
   
+  # Grab new URLs from this page
+  tempURL <- xml_attr(xml_find_all(scrapeData, '//a[@class="sidebar-single-line-item "]'), 
+                      "href")
+  
+  tempURL <- tempURL[!(tempURL %chin% urlHolder$url)]
+  
+  if (length(tempURL) > 0) {
+    urlHolder <- rbind(urlHolder, list(url = tempURL, complete = FALSE))
+  }
+  
+  # Grab ranking data
   tempData <- data.table(rank = xml_text(xml_find_all(scrapeData, '//span[@class="position"]')),
                          teamName = xml_text(xml_find_all(scrapeData, '//span[@class="name"]')),
                          points = xml_text(xml_find_all(scrapeData, '//span[@class="points"]')),
                          playerNames = xml_text(xml_find_all(scrapeData, '//table[@class="lineup"]'), 
-                                                trim = T))
+                                                trim = T),
+                         url = urlHolder$url[i])
   
   rankData <- rbind(rankData, tempData)
   
@@ -230,7 +251,17 @@ for (url in urls) {
   tempData <- tempData[!(tempData$url %chin% playerData$url)]
   # Bind new player info into playerData
   playerData <- rbind(playerData, tempData)
+  
+  
+  urlHolder[i, complete := TRUE]
+  print(paste("Complete page", i))
+  i <- i + 1
 }
+rm(baseURL, tempData, tempURL, i)
+rm(urlHolder, url, scrapeData)
+
+fwrite(rankData, "hltv_ranking.csv")
+fwrite(playerData, "hltv_playerData.csv")
 
 # Clean up
 # Rank
@@ -243,3 +274,20 @@ rankData[ , playerNames := gsub("\n\n", "+", playerNames)]
 # Points
 rankData[ , points := sapply(strsplit(points, " points", fixed = T), '[[', 1)]
 rankData[ , points := as.integer(lapply(strsplit(points, "(", fixed = T), '[[', 2))]
+
+# Date
+dates <- strsplit(rankData$url, "/")
+dates <- lapply(dates, function (x) x[4:6])
+dates <- sapply(dates, function (x) {
+  paste(x[1], 
+        match(x[2], tolower(month.name)), 
+        x[3], 
+        sep = "-")
+  })
+rankData$date <- as_date(dates)
+
+fwrite(rankData, "hltv_ranking.csv")
+
+View(rankData[ , sum(points), by = date])
+
+
