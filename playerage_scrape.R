@@ -261,7 +261,7 @@ rm(baseURL, tempData, tempURL, i)
 rm(urlHolder, url, scrapeData)
 
 fwrite(rankData, "hltv_ranking.csv")
-fwrite(playerData, "hltv_playerData.csv")
+fwrite(playerData, "hltv_playerNationality.csv")
 
 # Clean up
 # Rank
